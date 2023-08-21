@@ -14,7 +14,7 @@ https://developers.google.com/sheets/api/quickstart/python
 
 Use this tutorial for more clarity and to obtain the JSON credentials file that will be used for this project.
 
-https://www.youtube.com/watch?v=cnPlKLEGR7E
+  https://www.youtube.com/watch?v=cnPlKLEGR7E
 
 Make sure the file is added to your project folder, and then the filename can be copied to the creds file and then your Telegram Token can be copied to its spot aswell.
 
