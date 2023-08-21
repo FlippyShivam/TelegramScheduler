@@ -9,8 +9,13 @@ In Telegram, create your own bot that the code will run for:
   https://core.telegram.org/bots/tutorial
 
 You would then need to access the googlesheets and drive API for your project:
+
 https://developers.google.com/sheets/api/quickstart/python
+
 Use this tutorial for more clarity and to obtain the JSON credentials file that will be used for this project.
+
+https://www.youtube.com/watch?v=cnPlKLEGR7E
+
 Make sure the file is added to your project folder, and then the filename can be copied to the creds file and then your Telegram Token can be copied to its spot aswell.
 
 Then create a google sheet that you would like to reference to, make sure the names are exactly referenced.
