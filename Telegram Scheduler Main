@@ -93,7 +93,7 @@ async def processStartTime(message: types.Message):
     markup.add('4am - 10am', '7am - 3pm')
     markup.add('3pm -11pm', '4pm - 10pm')
     markup.add('11pm - 7am', 'Cancel')
-    await message.reply('What time will you volunteering?', reply_markup=markup)
+    await message.reply('What time will you working?', reply_markup=markup)
 
 
 @dp.message_handler(state=Form.final)
