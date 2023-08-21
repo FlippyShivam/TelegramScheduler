@@ -1,0 +1,122 @@
+from datetime import date
+from typing import Final
+import gspread
+from aiogram import Bot, Dispatcher, executor, types
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram.dispatcher import FSMContext
+from aiogram.dispatcher.filters.state import State, StatesGroup
+from oauth2client.service_account import ServiceAccountCredentials
+from telegram_bot_calendar import DetailedTelegramCalendar, LSTEP, WYearTelegramCalendar
+
+# importing libraries ^
+
+# initializing token and username
+SCOPES = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/spreadsheets",
+          "https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/drive"]
+
+TOKEN = 'Insert Telegram Bot Token Here'
+
+BOT_USERNAME: Final = 'Insert @ Bot Username Here'
+
+creds = ServiceAccountCredentials.from_json_keyfile_name("Insert file name .json here", SCOPES)
+
+client = gspread.authorize(creds)
+
+sheet = client.open("Insert Sheet Name/Title here").sheet1
+
+sheetData = sheet.get_all_records()
+
+bot = Bot(token=TOKEN)
+storage = MemoryStorage()
+dp = Dispatcher(bot, storage=storage)
+
+dateSelected = ' '
+
+
+class Form(StatesGroup):
+    calenderHandler = State()
+    calenderQuery = State()
+    final = State()
+
+
+@dp.message_handler(commands=['/start', 'Start', 'START'])
+async def startcommand(message: types.Message):
+    await Form.calenderHandler.set()
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
+    markup.add('Yes, I will make it!', 'No, I won`t make it, sorry!') # Buttons for "Will you be coming"
+    markup.add('Cancel')
+    await message.reply("Will you be coming to work today?", reply_markup=markup)
+
+
+@dp.message_handler(state=Form.calenderHandler)
+async def start(message, state: FSMContext):
+    async with state.proxy() as data:
+        data['x'] = message.text
+    if "Yes, I will make it!" not in data['x']:
+        markup = types.ReplyKeyboardRemove()
+        await message.reply('Thanks for the heads up', reply_markup=markup)
+        await state.finish()
+        return
+    else:
+        markup = types.ReplyKeyboardRemove()
+        await message.reply('Thanks for the heads up', reply_markup=markup)
+        calendar, step = WYearTelegramCalendar(min_date=date.today()).build()
+        await Form.calenderQuery.set()
+        await bot.send_message(message.chat.id,
+                               f"Select {LSTEP[step]}",
+                               reply_markup=calendar)
+
+
+@dp.callback_query_handler(WYearTelegramCalendar.func(), state=Form.calenderQuery)
+async def inline_kb_answer_callback_handler(query):
+    result, key, step = WYearTelegramCalendar(min_date=date.today()).process(query.data)
+    if not result and key:
+        await bot.edit_message_text(f"Select {LSTEP[step]}",
+                                    query.message.chat.id,
+                                    query.message.message_id,
+                                    reply_markup=key)
+    elif result:
+        global dateSelected
+        dateSelected = str(result)
+        await bot.edit_message_text(f"You selected {result}",
+                                    query.message.chat.id,
+                                    query.message.message_id)
+        return await processStartTime(message=query.message)
+
+
+async def processStartTime(message: types.Message):
+    await Form.final.set()
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
+
+    #Shifts, Time, can be adjusted based on user preferences
+    
+    markup.add('4am - 10am', '7am - 3pm')
+    markup.add('3pm -11pm', '4pm - 10pm')
+    markup.add('11pm - 7am', 'Cancel')
+    await message.reply('What time will you volunteering?', reply_markup=markup)
+
+
+@dp.message_handler(state=Form.final)
+async def proccessEndTime(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        data['shiftSelect'] = message.text
+    shiftSelected = message.text
+    if "Cancel" in shiftSelected:
+        markup = types.ReplyKeyboardRemove()
+        await message.reply('Thanks for the heads up', reply_markup=markup)
+        print('I finished')
+        await state.finish()
+        return
+    markup = types.ReplyKeyboardRemove()
+    await message.reply("Thanks!", reply_markup=markup)
+    name = message.from_user.first_name
+    username = message.from_user.username
+    insertRow = [username, name, dateSelected, shiftSelected]
+    sheet.insert_row(insertRow, 2)
+    return await state.finish()
+
+
+if __name__ == '__main__':
+    print('Starting bot...')
+
+    executor.start_polling(dp, skip_updates=True)
